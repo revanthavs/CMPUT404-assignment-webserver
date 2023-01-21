@@ -28,8 +28,8 @@ import socketserver
 
 debug = 0
 
-Allowed_paths = {"/":"www/index.html", "/index.html":"www/index.html", "/base.css":"www/base.css"}
-
+Allowed_paths = {"/":"www/index.html", "/index.html":"www/index.html", "/base.css":"www/base.css", "/deep/":"www/deep/index.html", "/deep/index.html":"www/deep/index.html", "/deep/deep.css":"www/deep/deep.css", "/hardcode/":"www/hardcode/index.html", "/hardcode/index.html":"www/hardcode/index.html", "/hardcode/deep.css":"www/hardcode/deep.css", "/hardcode/deep/":"www/hardcode/deep/index.html", "/hardcode/deep/index.html":"www/hardcode/deep/index.html", "/hardcode/deep/deep.css":"www/hardcode/deep/deep.css"}
+Redirected_paths = {"":"www/index.html", "/deep":"www/deep/index.html", "deep/hardcode":"www/hardcode/index.html", "deep/hardcode/deep":"www/deep/hardcode/deep/index.html"}
 class MyWebServer(socketserver.BaseRequestHandler):
 
     def handle(self):
@@ -46,13 +46,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
             if requested_path in Allowed_paths:
 
-                if Allowed_paths[requested_path] == "www/index.html":
-                    self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/html;",'utf-8'))
-                else:
-                    self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/css;",'utf-8'))
-
-                # self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/html;",'utf-8'))
-
+                self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/"+Allowed_paths[requested_path].split(".")[-1]+"\r\n\r\n",'utf-8'))
+                
                 with open(Allowed_paths[requested_path], "r") as f:
                     curr_lines = f.readlines()
                     if debug == 1:
@@ -67,8 +62,14 @@ class MyWebServer(socketserver.BaseRequestHandler):
                     # print(reqested_path[2], reqested_path[3], reqested_path[4])
                     # print(type(self.data))
                     print ("Got a request of: %s\n" % self.data)
+                    print("File extention:", Allowed_paths[requested_path].split(".")[-1])
             else:
-                self.request.send(bytearray("HTTP/1.1 404 NOT FOUND\r\n;",'utf-8'))                
+                if requested_path in Redirected_paths:
+                    self.request.send(bytearray("HTTP/1.1 301 MOVED PERMANENTLY\r\nLocation: http://127.0.0.1:8080"+requested_path+"/\r\n\r\n", 'utf-8'))
+                else:
+                    self.request.send(bytearray("HTTP/1.1 404 NOT FOUND\r\n\r\n",'utf-8'))
+        else:
+            self.request.send(bytearray("HTTP/1.1 405 METHOD NOT ALLOWED\r\n\r\n",'utf-8'))        
 
         # self.request.sendall(bytearray("OK",'utf-8'))
 
