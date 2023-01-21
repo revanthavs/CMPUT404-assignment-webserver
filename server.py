@@ -1,6 +1,6 @@
 #  coding: utf-8 
 import socketserver
-
+import os
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,17 +32,25 @@ Allowed_paths = {"/":"www/index.html", "/index.html":"www/index.html", "/base.cs
 Redirected_paths = {"":"www/index.html", "/deep":"www/deep/index.html", "deep/hardcode":"www/hardcode/index.html", "deep/hardcode/deep":"www/deep/hardcode/deep/index.html"}
 class MyWebServer(socketserver.BaseRequestHandler):
 
+    # Assumes the request is GET
+    def get_requested_path(self, request_data):
+        curr_index = 6
+        requested_path = ""
+
+        while request_data[curr_index] != " ":
+            requested_path += request_data[curr_index]
+            curr_index += 1
+
+        return requested_path
+
+    # Allows only files in directory www/
     def handle(self):
         self.data = self.request.recv(1024).strip()
         data = str(self.data)
 
         if data[2] == 'G' and data[3] == 'E' and data[4] == 'T':
-            curr_index = 6
-            requested_path = ""
-
-            while data[curr_index] != " ":
-                requested_path += data[curr_index]
-                curr_index += 1
+            
+            requested_path = self.get_requested_path(data)
 
             if requested_path in Allowed_paths:
 
@@ -56,7 +64,18 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 if requested_path in Redirected_paths:
                     self.request.send(bytearray("HTTP/1.1 301 MOVED PERMANENTLY\r\nLocation: http://127.0.0.1:8080"+requested_path+"/\r\n\r\n", 'utf-8'))
                 else:
-                    self.request.send(bytearray("HTTP/1.1 404 NOT FOUND\r\n\r\n",'utf-8'))
+                    allowed_directory = "www/"
+                    requested_path = "www/"
+                    requested_path += self.get_requested_path(data)
+                    try:
+                        if os.path.commonprefix([os.path.abspath(allowed_directory), os.path.abspath(requested_path)]) == os.path.abspath(allowed_directory):
+                            with open(requested_path, "r") as f:
+                                self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/"+requested_path.split(".")[-1]+"\r\n\r\n",'utf-8'))
+                                self.request.sendall(bytearray(f.read(),'utf-8'))
+                        else:
+                            self.request.send(bytearray("HTTP/1.1 404 NOT FOUND\r\n\r\n",'utf-8'))                            
+                    except FileNotFoundError:
+                        self.request.send(bytearray("HTTP/1.1 404 NOT FOUND\r\n\r\n",'utf-8'))
         else:
             self.request.send(bytearray("HTTP/1.1 405 METHOD NOT ALLOWED\r\n\r\n",'utf-8'))        
 
