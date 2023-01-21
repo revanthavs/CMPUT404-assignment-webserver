@@ -26,7 +26,7 @@ import socketserver
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
-debug = 0
+debug = 1
 
 Allowed_paths = {"/":"www/index.html", "/index.html":"www/index.html", "/base.css":"www/base.css", "/deep/":"www/deep/index.html", "/deep/index.html":"www/deep/index.html", "/deep/deep.css":"www/deep/deep.css", "/hardcode/":"www/hardcode/index.html", "/hardcode/index.html":"www/hardcode/index.html", "/hardcode/deep.css":"www/hardcode/deep.css", "/hardcode/deep/":"www/hardcode/deep/index.html", "/hardcode/deep/index.html":"www/hardcode/deep/index.html", "/hardcode/deep/deep.css":"www/hardcode/deep/deep.css"}
 Redirected_paths = {"":"www/index.html", "/deep":"www/deep/index.html", "deep/hardcode":"www/hardcode/index.html", "deep/hardcode/deep":"www/deep/hardcode/deep/index.html"}
@@ -49,20 +49,9 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 self.request.send(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/"+Allowed_paths[requested_path].split(".")[-1]+"\r\n\r\n",'utf-8'))
                 
                 with open(Allowed_paths[requested_path], "r") as f:
-                    curr_lines = f.readlines()
-                    if debug == 1:
-                        print(curr_lines)
-                    
-                    for curr_line in curr_lines:
-                        self.request.sendall(bytearray(curr_line,'utf-8'))
 
-                if debug == 1:
-                    print("Reqested_path: ", requested_path)
-                    print("In Allowed_paths: ", Allowed_paths[requested_path])
-                    # print(reqested_path[2], reqested_path[3], reqested_path[4])
-                    # print(type(self.data))
-                    print ("Got a request of: %s\n" % self.data)
-                    print("File extention:", Allowed_paths[requested_path].split(".")[-1])
+                    self.request.sendall(bytearray(f.read(),'utf-8'))
+
             else:
                 if requested_path in Redirected_paths:
                     self.request.send(bytearray("HTTP/1.1 301 MOVED PERMANENTLY\r\nLocation: http://127.0.0.1:8080"+requested_path+"/\r\n\r\n", 'utf-8'))
